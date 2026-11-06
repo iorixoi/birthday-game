@@ -1,0 +1,647 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Love Catcher 💗</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #ffe3e8;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+
+#game-container {
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+canvas {
+    background: linear-gradient(to bottom, #e0c3fc, #8ec5fc);
+    display: block;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    color: white;
+    font-size: 19px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    z-index: 2;
+}
+
+#start-screen,
+#game-over-screen {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 245, 249, 0.92);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 5;
+    text-align: center;
+}
+
+#start-screen.active,
+#game-over-screen.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#start-screen p,
+#result-message {
+    font-size: 19px;
+    color: #777;
+    margin: 5px 20px 22px;
+    text-align: center;
+}
+
+h1 {
+    color: #ff6b8b;
+    font-size: 42px;
+    margin-bottom: 8px;
+}
+
+button {
+    padding: 13px 26px;
+    font-size: 18px;
+    background: #ff6b8b;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(255,107,139,0.4);
+    font-weight: bold;
+}
+
+button:hover {
+    background: #ff4771;
+}
+
+/* PRANK INTRO SCREENS */
+
+#warning-screen,
+#prank-screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 25px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 10;
+}
+
+#warning-screen {
+    background: #c90024;
+    color: white;
+}
+
+#prank-screen {
+    background: #e32645;
+    color: white;
+    z-index: 9;
+}
+
+#warning-screen.active,
+#prank-screen.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#warning-screen h1,
+#prank-screen h1 {
+    color: white;
+    font-size: 38px;
+    margin: 18px 0 12px;
+}
+
+#warning-screen p,
+#prank-screen p {
+    color: white;
+    font-size: 20px;
+    margin: 8px 0 25px;
+}
+
+.warning-icon {
+    display: inline-block;
+    font-size: 82px;
+    animation: warningShake 0.55s infinite ease-in-out;
+}
+
+@keyframes warningShake {
+    0%, 100% { transform: rotate(0deg); }
+    20% { transform: rotate(-9deg); }
+    40% { transform: rotate(9deg); }
+    60% { transform: rotate(-7deg); }
+    80% { transform: rotate(7deg); }
+}
+
+#warning-screen button,
+#prank-screen button {
+    background: white;
+    color: #c90024;
+    box-shadow: 0 4px 12px rgba(70, 0, 0, 0.25);
+}
+
+#warning-screen button:hover,
+#prank-screen button:hover {
+    background: #ffe5ea;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="game-container">
+
+    <!-- FIRST PAGE: WARNING -->
+
+    <div id="warning-screen" class="active">
+        <div class="warning-icon">⚠️</div>
+        <h1>YOU GOT HACKED</h1>
+        <p>your data and files are getting stolen</p>
+        <button onclick="showPrank()">Click to recover</button>
+    </div>
+
+    <!-- SECOND PAGE: PRANK -->
+
+    <div id="prank-screen">
+        <h1>heh, just kidding, you got hacked by my love</h1>
+        <p>did i scare you?</p>
+        <button onclick="showGameIntro()">Click! ❤️</button>
+    </div>
+
+    <div id="ui-layer">
+        Lives: <span id="lives-val">3</span> 💗
+    </div>
+
+    <!-- THIRD PAGE: GAME INTRO -->
+
+    <div id="start-screen">
+        <h1>Love Catcher 💗</h1>
+        <p>I hope you enjoy!</p>
+        <button onclick="startGame()">Click to Enter 💌</button>
+    </div>
+
+    <!-- ENDING SCREEN -->
+
+    <div id="game-over-screen">
+        <h1 id="game-title">You Win! 💗</h1>
+        <p id="result-message">
+            You filled my heart with your love, happy birthday baby
+        </p>
+        <button onclick="resetGame()">Play Again ❓</button>
+    </div>
+
+    <canvas id="gameCanvas" width="500" height="600"></canvas>
+
+</div>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+const livesVal = document.getElementById("lives-val");
+const startScreen = document.getElementById("start-screen");
+const gameOverScreen = document.getElementById("game-over-screen");
+const gameTitle = document.getElementById("game-title");
+const resultMessage = document.getElementById("result-message");
+const warningScreen = document.getElementById("warning-screen");
+const prankScreen = document.getElementById("prank-screen");
+
+// INTRO PAGE BUTTONS
+
+function showPrank() {
+    warningScreen.classList.remove("active");
+    prankScreen.classList.add("active");
+}
+
+function showGameIntro() {
+    prankScreen.classList.remove("active");
+    startScreen.classList.add("active");
+}
+
+// GAME VARIABLES
+
+let lives = 3;
+let progress = 0;
+let gameOver = false;
+let items = [];
+let spawnTimer = 0;
+
+const keys = {
+    Left: false,
+    Right: false
+};
+
+// PLAYER: CUTE CAT
+
+const player = {
+    x: 205,
+    y: 515,
+    width: 90,
+    height: 65,
+    speed: 8,
+
+    draw() {
+        const x = this.x;
+        const y = this.y;
+
+        // Cat ears
+        ctx.fillStyle = "#fff8eb";
+        ctx.beginPath();
+        ctx.moveTo(x + 12, y + 25);
+        ctx.lineTo(x + 18, y);
+        ctx.lineTo(x + 39, y + 22);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(x + 51, y + 22);
+        ctx.lineTo(x + 72, y);
+        ctx.lineTo(x + 79, y + 25);
+        ctx.fill();
+
+        // Pink inner ears
+        ctx.fillStyle = "#ffb6c8";
+
+        ctx.beginPath();
+        ctx.moveTo(x + 19, y + 18);
+        ctx.lineTo(x + 20, y + 8);
+        ctx.lineTo(x + 32, y + 20);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(x + 59, y + 20);
+        ctx.lineTo(x + 70, y + 8);
+        ctx.lineTo(x + 72, y + 18);
+        ctx.fill();
+
+        // Cat face
+        ctx.fillStyle = "#fff8eb";
+        ctx.beginPath();
+        ctx.roundRect(x + 7, y + 15, 76, 48, 22);
+        ctx.fill();
+
+        // Eyes
+        ctx.strokeStyle = "#555";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(x + 29, y + 35, 4, 0, Math.PI, true);
+        ctx.arc(x + 61, y + 35, 4, 0, Math.PI, true);
+        ctx.stroke();
+
+        // Blush
+        ctx.fillStyle = "#ffb1c2";
+        ctx.beginPath();
+        ctx.arc(x + 19, y + 45, 6, 0, Math.PI * 2);
+        ctx.arc(x + 71, y + 45, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Nose
+        ctx.fillStyle = "#ff8fa8";
+        ctx.beginPath();
+        ctx.arc(x + 45, y + 43, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Mouth
+        ctx.strokeStyle = "#777";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x + 45, y + 46);
+        ctx.lineTo(x + 45, y + 50);
+        ctx.moveTo(x + 45, y + 50);
+        ctx.quadraticCurveTo(x + 39, y + 55, x + 36, y + 49);
+        ctx.moveTo(x + 45, y + 50);
+        ctx.quadraticCurveTo(x + 51, y + 55, x + 54, y + 49);
+        ctx.stroke();
+
+        // Whiskers
+        ctx.strokeStyle = "#aaa";
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+        ctx.moveTo(x + 17, y + 42);
+        ctx.lineTo(x + 3, y + 38);
+        ctx.moveTo(x + 17, y + 48);
+        ctx.lineTo(x + 3, y + 50);
+
+        ctx.moveTo(x + 73, y + 42);
+        ctx.lineTo(x + 87, y + 38);
+        ctx.moveTo(x + 73, y + 48);
+        ctx.lineTo(x + 87, y + 50);
+        ctx.stroke();
+    }
+};
+
+// HEART SHAPE FOR THE PROGRESS METER
+
+function heartPath(x, y, w, h) {
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2, y + h * 0.32);
+
+    ctx.bezierCurveTo(
+        x + w * 0.15, y - h * 0.05,
+        x - w * 0.12, y + h * 0.45,
+        x + w * 0.5, y + h
+    );
+
+    ctx.bezierCurveTo(
+        x + w * 1.12, y + h * 0.45,
+        x + w * 0.85, y - h * 0.05,
+        x + w / 2, y + h * 0.32
+    );
+
+    ctx.closePath();
+}
+
+// DRAW BIG FILLING HEART
+
+function drawProgressHeart() {
+    const x = 195;
+    const y = 55;
+    const w = 110;
+    const h = 100;
+
+    // Empty heart background
+    heartPath(x, y, w, h);
+    ctx.fillStyle = "#fff0f3";
+    ctx.fill();
+
+    // Clip red fill inside the heart
+    ctx.save();
+    heartPath(x, y, w, h);
+    ctx.clip();
+
+    const fillHeight = h * (progress / 100);
+    const fillY = y + h - fillHeight;
+
+    ctx.fillStyle = "#ff476f";
+    ctx.fillRect(x - 5, fillY, w + 10, fillHeight + 5);
+
+    ctx.restore();
+
+    // Heart outline
+    heartPath(x, y, w, h);
+    ctx.strokeStyle = "#ff6b8b";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Percentage
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 18px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(progress + "%", 250, 185);
+
+    ctx.textAlign = "left";
+}
+
+// FALLING OBJECTS
+
+class FallingItem {
+    constructor() {
+        this.width = 32;
+        this.height = 32;
+
+        this.x = Math.random() * (canvas.width - this.width);
+        this.y = -35;
+
+        this.speed = 2 + Math.random() * 3;
+
+        // 50% good objects, 50% bad objects
+        const random = Math.random();
+
+        if (random < 0.25) {
+            this.type = "heart";
+            this.emoji = "💖";
+        } else if (random < 0.5) {
+            this.type = "star";
+            this.emoji = "⭐";
+        } else {
+            this.type = "bad";
+            this.emoji = "☠️";
+        }
+    }
+
+    update() {
+        this.y += this.speed;
+    }
+
+    draw() {
+        ctx.font = "29px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        ctx.fillText(
+            this.emoji,
+            this.x + this.width / 2,
+            this.y + this.height / 2
+        );
+
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
+    }
+}
+
+// KEYBOARD CONTROLS
+
+window.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") {
+        keys.Left = true;
+        e.preventDefault();
+    }
+
+    if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") {
+        keys.Right = true;
+        e.preventDefault();
+    }
+});
+
+window.addEventListener("keyup", (e) => {
+    if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") {
+        keys.Left = false;
+    }
+
+    if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") {
+        keys.Right = false;
+    }
+});
+
+// WIN / LOSE SCREEN
+
+function endGame(won) {
+    gameOver = true;
+
+    if (won) {
+        gameTitle.innerText = "YOU WIN! 💗";
+        resultMessage.innerText =
+            "You filled my heart with your love, happy birthday baby";
+    } else {
+        gameTitle.innerText = "Game Over! 💔";
+        resultMessage.innerText =
+            "Don't give up! Try filling the heart again.";
+    }
+
+    gameOverScreen.classList.add("active");
+}
+
+// START GAME
+
+function startGame() {
+    startScreen.classList.remove("active");
+    gameLoop();
+}
+
+// RESET GAME
+
+function resetGame() {
+    lives = 3;
+    progress = 0;
+    items = [];
+    spawnTimer = 0;
+    gameOver = false;
+
+    player.x = 205;
+
+    keys.Left = false;
+    keys.Right = false;
+
+    livesVal.innerText = lives;
+
+    gameOverScreen.classList.remove("active");
+
+    gameLoop();
+}
+
+// UPDATE GAME
+
+function updateGame() {
+    if (gameOver) return;
+
+    // Move cat
+    if (keys.Left) {
+        player.x -= player.speed;
+    }
+
+    if (keys.Right) {
+        player.x += player.speed;
+    }
+
+    // Keep cat inside canvas
+    player.x = Math.max(
+        0,
+        Math.min(canvas.width - player.width, player.x)
+    );
+
+    // Spawn objects
+    spawnTimer++;
+
+    if (spawnTimer > 45) {
+        items.push(new FallingItem());
+        spawnTimer = 0;
+    }
+
+    // Update falling objects
+    for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i];
+
+        item.update();
+
+        // Collision detection
+        if (
+            item.x < player.x + player.width &&
+            item.x + item.width > player.x &&
+            item.y < player.y + player.height &&
+            item.y + item.height > player.y
+        ) {
+
+            if (item.type === "heart" || item.type === "star") {
+
+                // Fill heart by 10%
+                progress += 10;
+                progress = Math.min(progress, 100);
+
+                if (progress >= 100) {
+                    items.splice(i, 1);
+                    endGame(true);
+                    return;
+                }
+
+            } else {
+
+                // Bad object costs one life
+                lives--;
+                livesVal.innerText = lives;
+
+                if (lives <= 0) {
+                    items.splice(i, 1);
+                    endGame(false);
+                    return;
+                }
+            }
+
+            items.splice(i, 1);
+            continue;
+        }
+
+        // Remove objects that fall off screen
+        if (item.y > canvas.height) {
+            items.splice(i, 1);
+        }
+    }
+}
+
+// DRAW EVERYTHING
+
+function drawGame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawProgressHeart();
+
+    player.draw();
+
+    items.forEach(item => item.draw());
+}
+
+// MAIN GAME LOOP
+
+function gameLoop() {
+    updateGame();
+    drawGame();
+
+    if (!gameOver) {
+        requestAnimationFrame(gameLoop);
+    }
+}
+
+// SHOW GAME BEHIND START SCREEN
+
+drawGame();
+
+</script>
+</body>
+</html>
